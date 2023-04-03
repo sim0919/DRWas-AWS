@@ -1,0 +1,40 @@
+#!/bin/sh
+
+sudo yum install -y git
+sudo yum install -y expect
+git clone https://github.com/simjh0919/DRWorkshop-DB.git ./db
+
+sudo yum install -y https://dev.mysql.com/get/mysql80-community-release-el7-5.noarch.rpm
+sudo amazon-linux-extras install epel -y
+sudo yum -y install mysql-community-server
+sudo systemctl enable --now mysqld
+
+MYSQL_ROOT_PASSWORD=$(sudo grep 'temporary.*root@localhost' /var/log/mysqld.log | tail -n 1 | sed 's/.*root@localhost: //')
+NEW_PASSWORD="Drworkshop1!"
+
+SECURE_MYSQL=$(expect -c " 
+set timeout 3 
+spawn mysql_secure_installation 
+expect \"Enter password for user root:\" 
+send \"$MYSQL_ROOT_PASSWORD\r\" 
+expect \"New password:\" 
+send \"$NEW_PASSWORD\r\" 
+expect \"Re-enter new password:\" 
+send \"$NEW_PASSWORD\r\" 
+expect \"Change the password for root ? ((Press y|Y for Yes, any other key for No) :\" 
+send \"n\r\" 
+expect \"Remove anonymous users? (Press y|Y for Yes, any other key for No) :\" 
+send \"y\r\" 
+expect \"Disallow root login remotely? (Press y|Y for Yes, any other key for No) :\" 
+send \"y\r\" 
+expect \"Remove test database and access to it? (Press y|Y for Yes, any other key for No) :\" 
+send \"y\r\" 
+expect \"Reload privilege tables now? (Press y|Y for Yes, any other key for No) :\" 
+send \"y\r\" 
+expect eof 
+")
+
+echo "$SECURE_MYSQL"
+
+mysql -u root -p'Drworkshop1!' < ./db/mysql.sql
+sudo systemctl restart mysqld
